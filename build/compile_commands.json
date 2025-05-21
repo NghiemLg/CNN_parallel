@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA/build",
-  "command": "/usr/local/cuda-12.4/bin/nvcc -forward-unknown-to-host-compiler -DCUDA_ERROR_CHECK -I/usr/local/cuda-12.4/include -I/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA -I/usr/local/cuda-12.4/targets/x86_64-linux/include -isystem=/usr/include/opencv4  -D_FORCE_INLINES -g --generate-code=arch=compute_75,code=[compute_75,sm_75] -std=c++17 -x cu -dc /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA/kernel.cu -o CMakeFiles/cnn_cuda.dir/kernel.cu.o",
-  "file": "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA/kernel.cu"
-}
-]

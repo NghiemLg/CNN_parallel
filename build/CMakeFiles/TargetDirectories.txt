@@ -1,3 +1,0 @@
-/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA/build/CMakeFiles/cnn_cuda.dir
-/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA/build/CMakeFiles/edit_cache.dir
-/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/CUDA-CNN-From-Scratch/CNN_CUDA/CNN_CUDA/build/CMakeFiles/rebuild_cache.dir
