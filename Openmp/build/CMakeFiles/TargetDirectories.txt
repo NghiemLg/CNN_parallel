@@ -1,0 +1,4 @@
+/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/CMakeFiles/cnn_omp.dir
+/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/CMakeFiles/test_real.dir
+/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/CMakeFiles/edit_cache.dir
+/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/CMakeFiles/rebuild_cache.dir
