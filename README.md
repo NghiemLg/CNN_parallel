@@ -1,4 +1,4 @@
-# CNN_CUDA - Dự án So sánh Hiệu năng CNN trên CPU và GPU
+# CNN_CUDA - Paraellel parallel programming
 
 Dự án này tập trung vào việc so sánh hiệu năng của các mạng nơ-ron tích chập (CNN) khi chạy trên CPU và GPU, sử dụng các công nghệ song song hóa khác nhau.
 
