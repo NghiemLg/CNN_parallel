@@ -1,5 +1,3 @@
-Dựa vào code của bạn, mô hình CNN được cấu trúc như sau:
-
 ## 1. Cấu trúc tổng quan
 ```mermaid
 graph TD
