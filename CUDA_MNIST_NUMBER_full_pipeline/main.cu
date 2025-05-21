@@ -31,11 +31,11 @@ struct KernelConfig {
 
 static inline void loaddata()
 {
-    int ret1 = mnist_load("/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/data/train-images.idx3-ubyte", 
-                         "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/data/train-labels.idx1-ubyte", 
+    int ret1 = mnist_load("../../data/train-images.idx3-ubyte",
+                         "../../data/train-labels.idx1-ubyte",
                          &train_set, &train_cnt);
-    int ret2 = mnist_load("/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/data/t10k-images.idx3-ubyte", 
-                         "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/data/t10k-labels.idx1-ubyte", 
+    int ret2 = mnist_load("../../data/t10k-images.idx3-ubyte",
+                         "../../data/t10k-labels.idx1-ubyte",
                          &test_set, &test_cnt);
     if (ret1 != 0) {
         printf("Lỗi khi load train set, mã lỗi: %d\n", ret1);

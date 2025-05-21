@@ -1,32 +1,42 @@
-# Parallel CNN Implementation using CUDA
+# Triển Khai CNN Song Song Sử Dụng CUDA
 
-This project implements a Convolutional Neural Network (CNN) for MNIST digit recognition using NVIDIA CUDA for parallel processing. The implementation demonstrates how GPU acceleration can significantly improve the training and inference performance of deep learning models.
+Dự án này triển khai một Convolutional Neural Network (CNN) để nhận dạng chữ số MNIST sử dụng NVIDIA CUDA cho xử lý song song. Việc triển khai này cho thấy cách GPU acceleration có thể cải thiện đáng kể hiệu suất training và inference của các deep learning models.
 
-## Project Structure
+## Cấu Trúc Dự Án
 
 ```
-CUDA/
-├── main.cu           # Main CUDA program file
-├── layer.cu          # CUDA kernel implementations
-├── layer_c.h         # Layer class and kernel declarations
+CUDA_MNIST_NUMBER_full_pipeline/
+├── main.cu           # File chương trình CUDA chính
+├── layer.cu          # Triển khai CUDA kernels
+├── layer_c.h         # Khai báo Layer class và kernels
 ├── mnist.h           # MNIST dataset loader
-└── README.md         # This file
+├── test_real.cu      # Chương trình test với ảnh thực tế
+├── CMakeLists.txt    # File cấu hình CMake
+├── information.MD    # Thông tin chi tiết về dự án
+├── README.md         # File này
+├── weights_c1.bin    # Weights của convolutional layer
+├── weights_s1.bin    # Weights của subsampling layer
+├── weights_f.bin     # Weights của fully connected layer
+├── bias_c1.bin       # Bias của convolutional layer
+├── bias_s1.bin       # Bias của subsampling layer
+├── bias_f.bin        # Bias của fully connected layer
+├── image.png         # Ảnh mẫu để test
+├── image copy 0.png  # Ảnh test số 0
+├── image copy 1.png  # Ảnh test số 1
+├── image copy 4.png  # Ảnh test số 4
+└── image copy 5.png  # Ảnh test số 5
 ```
 
-## Requirements
+## Yêu Cầu Hệ Thống
 
-- NVIDIA GPU with CUDA support
-- CUDA Toolkit (version 12.4 or later)
-- C++11 compatible compiler
-- MNIST dataset files in the `../data/` directory:
-  - `train-images.idx3-ubyte`
-  - `train-labels.idx1-ubyte`
-  - `t10k-images.idx3-ubyte`
-  - `t10k-labels.idx1-ubyte`
+- GPU NVIDIA hỗ trợ CUDA
+- CUDA Toolkit (phiên bản 12.4 trở lên)
+- Trình biên dịch tương thích C++11
+- CMake (phiên bản 3.10 trở lên)
 
-## Network Architecture
+## Kiến Trúc Mạng
 
-The CNN consists of the following layers:
+CNN bao gồm các layers sau:
 1. Input Layer (28x28)
 2. Convolutional Layer (C1)
    - 6 feature maps
@@ -38,14 +48,14 @@ The CNN consists of the following layers:
 4. Fully Connected Layer (F)
    - 10 output neurons (digits 0-9)
 
-## CUDA Implementation Details
+## Chi Tiết Triển Khai CUDA
 
-### Key Components
+### Các Thành Phần Chính
 
 1. **Layer Class**
-   - Manages weights, biases, and activations
-   - Handles memory allocation for GPU
-   - Supports forward and backward propagation
+   - Quản lý weights, biases và activations
+   - Xử lý memory allocation cho GPU
+   - Hỗ trợ forward và backward propagation
 
 2. **CUDA Kernels**
    - Forward Propagation:
@@ -58,59 +68,65 @@ The CNN consists of the following layers:
      - `bp_c1`: Convolutional layer gradients
 
 3. **Memory Management**
-   - Uses CUDA device memory for weights and activations
-   - Implements efficient memory transfers between CPU and GPU
+   - Sử dụng CUDA device memory cho weights và activations
+   - Triển khai efficient memory transfers giữa CPU và GPU
 
-## Compilation
+## Biên Dịch
 
 ```bash
-nvcc -o cnn_cuda main.cu layer.cu -std=c++11 -I/usr/local/cuda/include -L/usr/local/cuda/lib64 -lcudart -lcublas -lcuda
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-## Usage
+## Sử Dụng
 
-1. Ensure MNIST dataset files are in the correct location
-2. Compile the code using the command above
-3. Run the executable:
+1. Biên dịch mã nguồn sử dụng CMake như hướng dẫn trên
+2. Chạy chương trình:
    ```bash
    ./cnn_cuda
    ```
+3. Để nhận dạng ảnh thực tế:
+   ```bash
+   ./test_real image.png
+   ```
 
-## Performance
+## Tính Năng
 
-The CUDA implementation achieves:
-- Training time: ~2.5 seconds
-- Error rate: ~7.8%
-- Significant speedup compared to CPU implementations
+- Training CNN model trên MNIST dataset
+- Nhận dạng chữ số từ ảnh đầu vào
+- Tối ưu hóa hiệu suất bằng CUDA
+- Hỗ trợ real-time inference
 
-## Optimization Techniques
+## Tối Ưu Hóa
 
 1. **Kernel Configuration**
-   - Optimized block and grid sizes for each layer
+   - Optimized block và grid sizes cho từng layer
    - Efficient memory access patterns
-   - Shared memory usage where beneficial
+   - Shared memory usage khi có lợi
 
 2. **Memory Management**
-   - Minimized host-device transfers
-   - Efficient memory allocation and deallocation
-   - Proper error handling for CUDA operations
+   - Giảm thiểu host-device transfers
+   - Efficient memory allocation và deallocation
+   - Proper error handling cho CUDA operations
 
-## Troubleshooting
+## Xử Lý Sự Cố
 
 1. **CUDA Header Issues**
-   - Ensure CUDA toolkit is properly installed
-   - Check include paths in compilation command
+   - Đảm bảo CUDA toolkit được cài đặt đúng cách
+   - Kiểm tra include paths trong lệnh biên dịch
    - Verify CUDA version compatibility
 
 2. **Memory Issues**
-   - Check GPU memory availability
-   - Monitor memory usage during execution
+   - Kiểm tra GPU memory availability
+   - Monitor memory usage trong quá trình thực thi
    - Handle CUDA errors appropriately
 
-## Contributing
+## Đóng Góp
 
-Feel free to submit issues and enhancement requests!
+Mọi đóng góp đều được hoan nghênh! Vui lòng tạo issue hoặc pull request.
 
-## License
+## Giấy Phép
 
-This project is licensed under the terms of the LICENSE file in the root directory. 
+Dự án này được cấp phép theo các điều khoản trong file LICENSE trong thư mục gốc. 
