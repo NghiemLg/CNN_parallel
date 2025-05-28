@@ -1,3 +1,15 @@
+/**
+ * @file main.cu
+ * @brief Main file for CNN program using CUDA
+ * 
+ * This file contains the main functions for training and testing the CNN model:
+ * - Layer initialization and configuration
+ * - MNIST data loading
+ * - Forward propagation
+ * - Backward propagation
+ * - Training and testing
+ */
+
 #define USE_MNIST_LOADER
 #define MNIST_DOUBLE
 #include "mnist.h"
@@ -9,117 +21,137 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
+// Global variables to store training and testing data
 static mnist_data *train_set, *test_set;
 static unsigned int train_cnt, test_cnt;
 
-// Define layers of CNN
-static Layer l_input = Layer(0, 0, 28*28);
-static Layer l_c1 = Layer(5*5, 6, 24*24*6);
-static Layer l_s1 = Layer(4*4, 1, 6*6*6);
-static Layer l_f = Layer(6*6*6, 10, 10);
+// Initialize CNN layers
+static Layer l_input = Layer(0, 0, 28*28);        // Input layer: 28x28 pixels
+static Layer l_c1 = Layer(5*5, 6, 24*24*6);      // Conv layer: 6 feature maps, kernel 5x5
+static Layer l_s1 = Layer(4*4, 1, 6*6*6);        // Subsampling layer: kernel 4x4
+static Layer l_f = Layer(6*6*6, 10, 10);         // Fully connected layer: 216->10 neurons
 
-static void learn();
-static unsigned int classify(double data[28][28]);
-static void test();
-static double forward_pass(double data[28][28]);
-static double back_pass();
+// Function declarations
+static void learn();                              // Network training function
+static unsigned int classify(double data[28][28]); // Function to classify input image
+static void test();                               // Network testing function
+static double forward_pass(double data[28][28]);  // Forward propagation function
+static double back_pass();                        // Backward propagation function
 
+// Structure to store CUDA kernel configuration
 struct KernelConfig {
-    dim3 blocks;
-    dim3 threads;
+    dim3 blocks;    // Number of blocks
+    dim3 threads;   // Number of threads per block
 };
 
+/**
+ * @brief Load MNIST data from files
+ * 
+ * Loads both training set and test set from MNIST files
+ */
 static inline void loaddata()
 {
+    // Load training set
     int ret1 = mnist_load("../../data/train-images.idx3-ubyte",
                          "../../data/train-labels.idx1-ubyte",
                          &train_set, &train_cnt);
+    // Load test set
     int ret2 = mnist_load("../../data/t10k-images.idx3-ubyte",
                          "../../data/t10k-labels.idx1-ubyte",
                          &test_set, &test_cnt);
     if (ret1 != 0) {
-        printf("Lỗi khi load train set, mã lỗi: %d\n", ret1);
+        printf("Error loading train set, error code: %d\n", ret1);
     }
     if (ret2 != 0) {
-        printf("Lỗi khi load test set, mã lỗi: %d\n", ret2);
+        printf("Error loading test set, error code: %d\n", ret2);
     }
 }
 
+/**
+ * @brief Main function of the program
+ */
 int main(int argc, const  char **argv)
 {
-	srand(time(NULL));
+    // Initialize random seed
+    srand(time(NULL));
 
-	CUresult err = cuInit(0);
-	if (err != CUDA_SUCCESS) {
-		fprintf(stderr, "CUDA initialisation failed with error code - %d\n", err);
-		return 1;
-	}
+    // Initialize CUDA
+    CUresult err = cuInit(0);
+    if (err != CUDA_SUCCESS) {
+        fprintf(stderr, "CUDA initialization failed with error code - %d\n", err);
+        return 1;
+    }
+
+    // Load data and train network
     loaddata();
     learn();
     test();
 
-    // Sau khi train xong, lưu trọng số và bias
+    // Save weights and biases after training
     l_c1.saveWeights("weights_c1.bin", "bias_c1.bin");
     l_s1.saveWeights("weights_s1.bin", "bias_s1.bin");
     l_f.saveWeights("weights_f.bin", "bias_f.bin");
 
     return 0;
 }
-// Forward propagation of a single row in dataset
+
+/**
+ * @brief Perform forward propagation for an input image
+ * @param data Input image of size 28x28
+ * @return Execution time
+ */
 static double forward_pass(double data[28][28])
 {
-	float input[28][28];
+    // Convert input to float
+    float input[28][28];
+    for (int i = 0; i < 28; ++i) {
+        for (int j = 0; j < 28; ++j) {
+            input[i][j] = data[i][j];
+        }
+    }
 
-	for (int i = 0; i < 28; ++i) {
-		for (int j = 0; j < 28; ++j) {
-			input[i][j] = data[i][j];
-		}
-	}
+    // Reset layers
+    l_input.clear();
+    l_c1.clear();
+    l_s1.clear();
+    l_f.clear();
 
-	l_input.clear();
-	l_c1.clear();
-	l_s1.clear();
-	l_f.clear();
+    // Measure execution time
+    clock_t start, end;
+    start = clock();
 
-		clock_t start, end;
-	start = clock();
+    // Forward propagation through layers
+    l_input.setOutput((float *)input);
+    
+    // Conv layer
+    KernelConfig configLayer1 = {dim3(6), dim3(24, 24)};
+    fp_c1<<<configLayer1.blocks, configLayer1.threads>>>((float (*)[28])l_input.output, 
+                                                        (float (*)[24][24])l_c1.preact, 
+                                                        (float (*)[5][5])l_c1.weight,
+                                                        l_c1.bias);
+    apply_step_function<<<configLayer1.blocks, configLayer1.threads>>>(l_c1.preact, l_c1.output, l_c1.O);
 
-	l_input.setOutput((float *)input);
-	KernelConfig configLayer1 = {dim3(6), dim3(24, 24)};
- 
-  fp_c1<<<configLayer1.blocks, configLayer1.threads>>>((float (*)[28])l_input.output, (float (*)[24][24])l_c1.preact, (float (*)[5][5])l_c1.weight,l_c1.bias);
-	  apply_step_function<<<configLayer1.blocks, configLayer1.threads>>>(l_c1.preact, l_c1.output, l_c1.O);
-   
+    // Subsampling layer
+    KernelConfig configSubsample1 = {
+        dim3((6 + 2 - 1) / 2, (6 + 2 - 1) / 2, 6),
+        dim3(2, 2, 1)
+    };
+    fp_s1<<<configSubsample1.blocks, configSubsample1.threads>>>((float (*)[24][24])l_c1.output, 
+                                                                (float (*)[6][6])l_s1.preact, 
+                                                                (float (*)[4][4])l_s1.weight,
+                                                                l_s1.bias);
+    apply_step_function<<<configSubsample1.blocks, configSubsample1.threads>>>(l_s1.preact, l_s1.output, l_s1.O);
 
+    // Fully connected layer
+    KernelConfig configFullyConnected = {dim3(10), dim3(256)};
+    fp_f<<<configFullyConnected.blocks, configFullyConnected.threads>>>((float (*)[6][6])l_s1.output, 
+                                                                       l_f.preact, 
+                                                                       (float (*)[6][6][6])l_f.weight,
+                                                                       l_f.bias);
+    apply_step_function<<<1, 10>>>(l_f.preact, l_f.output, l_f.O);
 
-		  // Pooling layer
-
-		// Configuration for the subsampling layer
-KernelConfig configSubsample1 = {
-    dim3((6 + 2 - 1) / 2, (6 + 2 - 1) / 2, 6), // Grid size, rounding up if not a perfect multiple
-    dim3(2, 2, 1)  // Block size
-};
-	KernelConfig configBiasS1 = {
-    dim3(2, 2, 2), // Blocks
-    dim3(3, 3, 3)  // Threads per block
-};
-
-	fp_s1<<<configSubsample1.blocks, configSubsample1.threads>>>((float (*)[24][24])l_c1.output, (float (*)[6][6])l_s1.preact, (float (*)[4][4])l_s1.weight,l_s1.bias);
-
-	apply_step_function<<<configSubsample1.blocks, configSubsample1.threads>>>(l_s1.preact, l_s1.output, l_s1.O);
-  
-  
-
-		 // Fully connected layer
-
-	  KernelConfig configFullyConnected = {dim3(10), dim3(256)};
-
-fp_f<<<configFullyConnected.blocks, configFullyConnected.threads>>>((float (*)[6][6])l_s1.output, l_f.preact, (float (*)[6][6][6])l_f.weight,l_f.bias);
-apply_step_function<<<1, 10>>>(l_f.preact, l_f.output, l_f.O);
-  
-	end = clock();
-	return ((double) (end - start)) / CLOCKS_PER_SEC;
-
+    end = clock();
+    return ((double) (end - start)) / CLOCKS_PER_SEC;
 }
 
 // Back propagation to update weights

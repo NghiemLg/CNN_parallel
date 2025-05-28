@@ -1,3 +1,13 @@
+/**
+ * @file layer_c.h
+ * @brief Header file defining Layer class and CUDA kernels
+ * 
+ * This file contains:
+ * - Layer class definition for managing weights, biases and activations
+ * - CUDA kernel declarations for forward and backward propagation
+ * - Utility functions for GPU processing
+ */
+
 #include <cstdlib>
 #include <vector>
 #include <memory>
@@ -8,9 +18,17 @@
 #define LAYER_H
 #endif
 
+// Error threshold to stop training
 const static float threshold = 1.0E-02f;
 
-
+/**
+ * @brief Layer class representing a layer in the CNN
+ * 
+ * Each layer has:
+ * - Weights and biases
+ * - Output and pre-activation values
+ * - Gradients for backpropagation
+ */
 class Layer {
 	public:
 	int M, N, O;

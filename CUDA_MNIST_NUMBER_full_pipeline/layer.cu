@@ -1,7 +1,25 @@
+/**
+ * @file layer.cu
+ * @brief Implementation of Layer class methods and CUDA kernels
+ * 
+ * This file contains:
+ * - Implementation of Layer class methods
+ * - Implementation of CUDA kernels for forward and backward propagation
+ * - Utility functions for GPU processing
+ */
+
 #include <cstdio>
 #include "layer_c.h"
 
-// Constructor
+/**
+ * @brief Constructor of Layer class
+ * @param M Input size
+ * @param N Number of neurons
+ * @param O Output size
+ * 
+ * Initialize random weights and biases
+ * Allocate GPU memory for variables
+ */
 Layer::Layer(int M, int N, int O)
 {
 	this->M = M;
@@ -42,7 +60,11 @@ Layer::Layer(int M, int N, int O)
 	cudaMemcpy(weight, h_weight, sizeof(float) * M * N, cudaMemcpyHostToDevice);
 }
 
-// Destructor
+/**
+ * @brief Destructor of Layer class
+ * 
+ * Free allocated GPU memory
+ */
 Layer::~Layer()
 {
 	cudaFree(output);
@@ -57,19 +79,27 @@ Layer::~Layer()
 	cudaFree(d_weight);
 }
 
-// Send data one row from dataset to the GPU
+/**
+ * @brief Copy data from CPU to GPU
+ * @param data Input data
+ */
 void Layer::setOutput(float *data)
 {
 	cudaMemcpy(output, data, sizeof(float) * O, cudaMemcpyHostToDevice);
 }
 
-// Reset GPU memory between iterations
+/**
+ * @brief Reset output and preact to 0
+ */
 void Layer::clear()
 {
 	cudaMemset(output, 0x00, sizeof(float) * O);
 	cudaMemset(preact, 0x00, sizeof(float) * O);
 }
 
+/**
+ * @brief Reset gradients to 0
+ */
 void Layer::bp_clear()
 {
 	cudaMemset(d_output, 0x00, sizeof(float) * O);
@@ -77,12 +107,22 @@ void Layer::bp_clear()
 	cudaMemset(d_weight, 0x00, sizeof(float) * M * N);
 }
 
-
+/**
+ * @brief Activation function (sigmoid)
+ * @param v Input value
+ * @return Value after applying sigmoid
+ */
 __device__ float step_function(float v)
 {
     return 1 / (1 + expf(-v));  // Using expf() for faster computation
 }
 
+/**
+ * @brief Kernel to apply activation function to an array
+ * @param input Input array
+ * @param output Output array
+ * @param N Array size
+ */
 __global__ void apply_step_function(float *input, float *output, const int N)
 {
     const int total_threads = blockDim.x * gridDim.x;
@@ -94,9 +134,16 @@ __global__ void apply_step_function(float *input, float *output, const int N)
     }
 }
 
-
+/**
+ * @brief Kernel to compute error
+ * @param err Error array
+ * @param output Layer output
+ * @param Y True label
+ * @param N Output size
+ */
 __global__ void makeError(float *err, float *output, unsigned int Y, const int N)
-{float dt = 1.0E-01f;
+{
+	float dt = 1.0E-01f;
 	const int pos = blockIdx.x * blockDim.x + threadIdx.x;
 	const int size = blockDim.x * gridDim.x;
 
@@ -105,8 +152,15 @@ __global__ void makeError(float *err, float *output, unsigned int Y, const int N
 	}
 }
 
+/**
+ * @brief Kernel to apply gradients
+ * @param output Weights to update
+ * @param grad Gradients
+ * @param N Array size
+ */
 __global__ void apply_grad(float *output, float *grad, const int N)
-{float dt = 1.0E-01f;
+{
+	float dt = 1.0E-01f;
 	const int pos = blockIdx.x * blockDim.x + threadIdx.x;
 	const int size = blockDim.x * gridDim.x;
 
@@ -114,6 +168,14 @@ __global__ void apply_grad(float *output, float *grad, const int N)
 		output[idx] += dt * grad[idx];
 	}
 }
+
+/**
+ * @brief Kernel for forward propagation in convolutional layer
+ * @param input Input 28x28
+ * @param preact Pre-activation values 6x24x24
+ * @param weight Weights 6x5x5
+ * @param bias Bias 6
+ */
 __global__ void fp_c1(float input[28][28], float preact[6][24][24], float weight[6][5][5], float bias[6]) {
     int m = blockIdx.x; // One block per output feature map
     int x = threadIdx.x; // Thread along x dimension of output feature map
@@ -129,7 +191,6 @@ __global__ void fp_c1(float input[28][28], float preact[6][24][24], float weight
         preact[m][x][y] = sum + bias[m];
     }
 }
-
 
 __global__ void fp_s1(float input[6][24][24], float preact[6][6][6], float weight[1][4][4], float bias[1]) {
     int m = blockIdx.z;  // Use z-dimension in grid to handle different feature maps
@@ -168,7 +229,7 @@ __global__ void fp_f(float input[6][6][6], float preact[10], float weight[10][6]
 __global__ void bp_f(float d_weight[10][6][6][6], float bias[10], float d_preact[10], float p_output[6][6][6]) {
     // Use a single shared memory buffer for the entire output matrix.
     __shared__ float shared_p_output[6][6][6];
-float dt = 1.0E-01f;
+	float dt = 1.0E-01f;
     // Load p_output into shared memory once per block
     int idx = threadIdx.x + blockDim.x * threadIdx.y;
     int total_threads = blockDim.x * blockDim.y;
@@ -197,7 +258,6 @@ float dt = 1.0E-01f;
         atomicAdd(&bias[i], dt * d_preact_val);
     }
 }
-
 
 // Kernel launch parameters should be set according to the device's capabilities and the problem's needs
 __global__ void bp_output_s1(float d_output[6][6][6], float n_weight[10][6][6][6], float nd_preact[10]) {
@@ -232,6 +292,7 @@ __global__ void bp_preact_s1(float d_preact[6][6][6], float d_output[6][6][6], f
         d_preact[i][j][k] = d_output[i][j][k] * o * (1 - o);
     }
 }
+
 __global__ void bp_weight_s1(float d_weight[1][4][4], float d_preact[6][6][6],float p_output[6][24][24]) {
     // Indices for the kernel weight to update
     int j = blockIdx.x * blockDim.x + threadIdx.x; // kernel width index
@@ -253,7 +314,6 @@ __global__ void bp_weight_s1(float d_weight[1][4][4], float d_preact[6][6][6],fl
     }
 }
 
-
 __global__ void bp_bias_s1(float bias[1], float d_preact[6][6][6]) {
     // Assuming a grid of blocks where each thread can access a unique index
     int i = blockIdx.x;
@@ -265,8 +325,6 @@ __global__ void bp_bias_s1(float bias[1], float d_preact[6][6][6]) {
         atomicAdd(&bias[0], d_preact[i][j][k]);
     }
 }
-
-
 
 __global__ void bp_output_c1(float d_output[6][24][24], float n_weight[1][4][4], float nd_preact[6][6][6]) {
     int c = blockIdx.z;  // Channel
@@ -307,7 +365,6 @@ __global__ void bp_preact_c1(float d_preact[6][24][24],  float d_output[6][24][2
     }
 }
 
-
 __global__ void bp_weight_c1(float d_weight[6][5][5], float d_preact[6][24][24], float p_output[28][28]) {
     int filter = blockIdx.z; // Each block handles one filter
     int i = blockIdx.x * blockDim.x + threadIdx.x; // Index for rows in weight tensor
@@ -333,12 +390,10 @@ __global__ void bp_weight_c1(float d_weight[6][5][5], float d_preact[6][24][24],
     }
 }
 
-
-
 __global__ void bp_bias_c1(float bias[6], float d_preact[6][24][24]) {
     int feature = blockIdx.x; // Each block handles one feature map
     int idx = threadIdx.y * blockDim.x + threadIdx.x; // Flattened index for threads in a block
-float dt = 1.0E-01f;
+	float dt = 1.0E-01f;
     __shared__ float partialSum[256]; // Shared memory for thread partial sums, assuming a block size of 256
 
     // Initialize shared memory
