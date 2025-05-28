@@ -2,12 +2,9 @@
 ```mermaid
 graph TD
     A[Input Layer<br/>28x28x1] --> B[Conv Layer 1<br/>5x5x6]
-    B --> C[Pool Layer 1<br/>2x2]
-    C --> D[Conv Layer 2<br/>5x5x16]
-    D --> E[Pool Layer 2<br/>2x2]
-    E --> F[Fully Connected 1<br/>120 neurons]
-    F --> G[Fully Connected 2<br/>84 neurons]
-    G --> H[Output Layer<br/>10 neurons]
+    B --> C[Subsampling Layer 1<br/>4x4]
+    C --> D[Fully Connected Layer<br/>216->10]
+    D --> E[Output Layer<br/>10 neurons]
 ```
 
 ## 2. Chi tiết từng layer
@@ -15,58 +12,38 @@ graph TD
 ### Input Layer
 - Kích thước: 28x28x1 (ảnh grayscale)
 - Input: MNIST dataset
+- Không có weights và bias
 
 ### Conv Layer 1 (C1)
 - Kernel size: 5x5
 - Số kernel: 6
 - Output size: 24x24x6
-- Activation: ReLU
+- Activation: Step function
 
-### Pool Layer 1 (S2)
-- Pool size: 2x2
-- Stride: 2
-- Output size: 12x12x6
+### Subsampling Layer 1 (S1)
+- Kernel size: 4x4
+- Input: 24x24x6
+- Output size: 6x6x6
+- Activation: Step function
 
-### Conv Layer 2 (C3)
-- Kernel size: 5x5
-- Số kernel: 16
-- Output size: 8x8x16
-- Activation: ReLU
-
-### Pool Layer 2 (S4)
-- Pool size: 2x2
-- Stride: 2
-- Output size: 4x4x16
-
-### Fully Connected Layer 1 (F5)
-- Input: 4x4x16 = 256 neurons
-- Output: 120 neurons
-- Activation: ReLU
-
-### Fully Connected Layer 2 (F6)
-- Input: 120 neurons
-- Output: 84 neurons
-- Activation: ReLU
-
-### Output Layer
-- Input: 84 neurons
+### Fully Connected Layer (F)
+- Input: 6x6x6 = 216 neurons
 - Output: 10 neurons (tương ứng với 10 chữ số 0-9)
-- Activation: Softmax
+- Activation: Step function
 
 ## 3. Các tham số quan trọng
 ```cpp
 // Số lượng kernel và kích thước
 const int num_kernels_c1 = 6;
-const int num_kernels_c2 = 16;
-const int kernel_size = 5;
+const int kernel_size_c1 = 5;
+const int kernel_size_s1 = 4;
 
 // Kích thước feature map
 const int feature_map_size_c1 = 24;  // 28-5+1
-const int feature_map_size_c2 = 8;   // 12-5+1
+const int feature_map_size_s1 = 6;   // 24/4
 
-// Số neuron trong các fully connected layer
-const int num_neurons_f1 = 120;
-const int num_neurons_f2 = 84;
+// Số neuron trong fully connected layer
+const int num_neurons_f = 216;       // 6x6x6
 const int num_neurons_output = 10;
 ```
 
@@ -76,28 +53,19 @@ const int num_neurons_output = 10;
 weights_c1.bin    // 5x5x6 kernels
 bias_c1.bin       // 6 bias values
 
-// Conv Layer 2
-weights_c2.bin    // 5x5x16 kernels
-bias_c2.bin       // 16 bias values
+// Subsampling Layer 1
+weights_s1.bin    // 4x4 kernel
+bias_s1.bin       // 1 bias value
 
-// Fully Connected Layers
-weights_f1.bin    // 256x120 weights
-bias_f1.bin       // 120 bias values
-weights_f2.bin    // 120x84 weights
-bias_f2.bin       // 84 bias values
-weights_output.bin // 84x10 weights
-bias_output.bin    // 10 bias values
+// Fully Connected Layer
+weights_f.bin     // 216x10 weights
+bias_f.bin        // 10 bias values
 ```
 
 ## 5. Quá trình training
-- Batch size: 100
-- Learning rate: 0.01
-- Momentum: 0.9
-- Số epoch: 10
-- Loss function: Cross Entropy
-- Optimizer: SGD với momentum
-
-
+- Loss function: Euclidean distance
+- Weights và biases được lưu vào các file .bin sau khi training
+- Sử dụng backpropagation để cập nhật weights
 
 # Để sử dụng dự án với CMake cho việc **train** (huấn luyện) và **test** (kiểm tra với ảnh thực), bạn làm như sau:
 
@@ -106,7 +74,6 @@ bias_output.bin    // 10 bias values
 ## 1. Build (biên dịch) với CMake
 
 ```bash
-cd CUDA
 mkdir -p build
 cd build
 cmake ..
@@ -124,7 +91,7 @@ Chạy lệnh sau trong thư mục `build`:
 ```bash
 ./cnn_cuda
 ```
-- Sau khi chạy xong, các file trọng số như `weights_c1.bin`, `bias_c1.bin`, ... sẽ được tạo ra trong thư mục `CUDA/build` (hoặc cùng thư mục với file thực thi).
+- Sau khi chạy xong, các file trọng số như `weights_c1.bin`, `bias_c1.bin`, ... sẽ được tạo ra trong thư mục hiện tại.
 
 ---
 
@@ -150,7 +117,6 @@ Giả sử bạn có một ảnh số tay tên là `image.png` (28x28 hoặc ả
 ### **Tóm tắt lệnh sử dụng:**
 ```bash
 # Build
-cd CUDA
 mkdir -p build
 cd build
 cmake ..
