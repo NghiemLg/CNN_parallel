@@ -11,8 +11,8 @@
 #include <cstdlib>
 #include <vector>
 #include <memory>
-#include </usr/local/cuda/include/cublas_v2.h>
-#include </usr/local/cuda/include/cuda.h>
+#include <cublas_v2.h>
+#include <cuda.h>
 
 #ifndef LAYER_H
 #define LAYER_H

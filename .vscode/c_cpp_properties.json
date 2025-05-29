@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/local/cuda-12.4/targets/x86_64-linux/include",
+                "/usr/include/**"
+            ],
+            "defines": [
+                "USE_MNIST_LOADER",
+                "MNIST_DOUBLE"
+            ],
+            "compilerPath": "/usr/local/cuda-12.4/bin/nvcc",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
