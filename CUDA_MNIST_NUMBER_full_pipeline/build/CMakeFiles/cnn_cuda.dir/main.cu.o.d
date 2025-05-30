@@ -232,11 +232,9 @@ CMakeFiles/cnn_cuda.dir/main.cu.o : /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_
     /usr/include/c++/12/bits/atomic_base.h \
     /usr/include/c++/12/bits/atomic_lockfree_defines.h \
     /usr/include/c++/12/backward/auto_ptr.h \
-    /usr/local/cuda/include/cublas_v2.h \
-    /usr/local/cuda/include/cublas_api.h \
-    /usr/local/cuda/include/driver_types.h \
-    /usr/local/cuda/include/cuComplex.h \
-    /usr/local/cuda/include/vector_types.h \
+    /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cublas_v2.h \
+    /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cublas_api.h \
+    /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cuComplex.h \
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cuda_fp16.h \
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/nv/target \
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/nv/detail/__target_macros \
@@ -244,6 +242,5 @@ CMakeFiles/cnn_cuda.dir/main.cu.o : /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cuda_fp16.hpp \
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cuda_bf16.h \
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cuda_bf16.hpp \
-    /usr/local/cuda/include/cuda.h \
     /usr/local/cuda-12.4/bin/../targets/x86_64-linux/include/cuda.h \
     /usr/include/c++/12/cstdio

@@ -25,6 +25,9 @@
 static mnist_data *train_set, *test_set;
 static unsigned int train_cnt, test_cnt;
 
+// Training parameters
+static const float learning_rate = 0.01f;  // Learning rate for weight updates
+
 // Initialize CNN layers
 static Layer l_input = Layer(0, 0, 28*28);        // Input layer: 28x28 pixels
 static Layer l_c1 = Layer(5*5, 6, 24*24*6);      // Conv layer: 6 feature maps, kernel 5x5
@@ -52,19 +55,55 @@ struct KernelConfig {
 static inline void loaddata()
 {
     // Load training set
-    int ret1 = mnist_load("../../data/train-images.idx3-ubyte",
-                         "../../data/train-labels.idx1-ubyte",
+    int ret1 = mnist_load("/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/data/train-images.idx3-ubyte",
+                         "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/data/train-labels.idx1-ubyte",
                          &train_set, &train_cnt);
     // Load test set
-    int ret2 = mnist_load("../../data/t10k-images.idx3-ubyte",
-                         "../../data/t10k-labels.idx1-ubyte",
+    int ret2 = mnist_load("/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/data/t10k-images.idx3-ubyte",
+                         "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/data/t10k-labels.idx1-ubyte",
                          &test_set, &test_cnt);
+    
     if (ret1 != 0) {
-        printf("Error loading train set, error code: %d\n", ret1);
+        fprintf(stderr, "Error loading training set. Error code: %d\n", ret1);
+        switch(ret1) {
+            case -1:
+                fprintf(stderr, "Could not open training data files\n");
+                break;
+            case -2:
+                fprintf(stderr, "Invalid training image file format\n");
+                break;
+            case -3:
+                fprintf(stderr, "Invalid training label file format\n");
+                break;
+            case -4:
+                fprintf(stderr, "Training image and label counts do not match\n");
+                break;
+        }
+        exit(1);
     }
+    
     if (ret2 != 0) {
-        printf("Error loading test set, error code: %d\n", ret2);
+        fprintf(stderr, "Error loading test set. Error code: %d\n", ret2);
+        switch(ret2) {
+            case -1:
+                fprintf(stderr, "Could not open test data files\n");
+                break;
+            case -2:
+                fprintf(stderr, "Invalid test image file format\n");
+                break;
+            case -3:
+                fprintf(stderr, "Invalid test label file format\n");
+                break;
+            case -4:
+                fprintf(stderr, "Test image and label counts do not match\n");
+                break;
+        }
+        exit(1);
     }
+    
+    printf("Successfully loaded MNIST data:\n");
+    printf("Training set: %d images\n", train_cnt);
+    printf("Test set: %d images\n", test_cnt);
 }
 
 /**
@@ -150,6 +189,12 @@ static double forward_pass(double data[28][28])
                                                                        l_f.bias);
     apply_step_function<<<1, 10>>>(l_f.preact, l_f.output, l_f.O);
 
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel launch error: %s\n", cudaGetErrorString(err));
+        exit(1);
+    }
+
     end = clock();
     return ((double) (end - start)) / CLOCKS_PER_SEC;
 }
@@ -166,90 +211,159 @@ int numOutputs = 10;
 int gridSize = (numOutputs + blockSize - 1) / blockSize;
 	
 bp_f<<<gridSize, blockSize>>>((float (*)[6][6][6])l_f.d_weight,l_f.bias, l_f.d_preact, (float (*)[6][6])l_s1.output);
- 
-  bp_output_s1<<<5,(216 + 5 - 1) / 5>>>((float (*)[6][6])l_s1.d_output, (float (*)[6][6][6])l_f.weight, l_f.d_preact);
-	dim3 threadsPerBlock_s1(6, 6, 6); // One thread for each element in the 6x6x6 block
+cudaError_t err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_f): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+
+bp_output_s1<<<5,(216 + 5 - 1) / 5>>>((float (*)[6][6])l_s1.d_output, (float (*)[6][6][6])l_f.weight, l_f.d_preact);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_output_s1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+
+dim3 threadsPerBlock_s1(6, 6, 6); // One thread for each element in the 6x6x6 block
 dim3 numBlocks_s1(1, 1, 1);
-	bp_preact_s1<<<numBlocks_s1, threadsPerBlock_s1>>>((float (*)[6][6])l_s1.d_preact, (float (*)[6][6])l_s1.d_output, (float (*)[6][6])l_s1.preact);
-	dim3 threadsPerBlock_w_s1(4, 4); // Perfect fit for 4x4 kernel weight dimensions
+bp_preact_s1<<<numBlocks_s1, threadsPerBlock_s1>>>((float (*)[6][6])l_s1.d_preact, (float (*)[6][6])l_s1.d_output, (float (*)[6][6])l_s1.preact);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_preact_s1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+
+dim3 threadsPerBlock_w_s1(4, 4); // Perfect fit for 4x4 kernel weight dimensions
 dim3 numBlocks_w_s1(1, 1);
-	bp_weight_s1<<<numBlocks_w_s1, threadsPerBlock_w_s1>>>((float (*)[4][4])l_s1.d_weight, (float (*)[6][6])l_s1.d_preact, (float (*)[24][24])l_c1.output);
-	int totalThreads=6*6*6;
-	int numBlocks = (totalThreads + 256 - 1);
-	bp_bias_s1<<<numBlocks, 256>>>(l_s1.bias, (float (*)[6][6])l_s1.d_preact);
+bp_weight_s1<<<numBlocks_w_s1, threadsPerBlock_w_s1>>>((float (*)[4][4])l_s1.d_weight, (float (*)[6][6])l_s1.d_preact, (float (*)[24][24])l_c1.output);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_weight_s1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+int totalThreads=6*6*6;
+int numBlocks = (totalThreads + 256 - 1);
+bp_bias_s1<<<numBlocks, 256>>>(l_s1.bias, (float (*)[6][6])l_s1.d_preact);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_bias_s1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
     
-		
+
 dim3 threadsPerBlock_output_c1(8,8 );  // 4x4 threads to handle the 4x4 weight matrix
 dim3 numBlocks_output_c1((24 + threadsPerBlock_output_c1.x - 1) / threadsPerBlock_output_c1.x,
                (24 + threadsPerBlock_output_c1.y - 1) / threadsPerBlock_output_c1.y,
                6);
-					
-	bp_output_c1<<<numBlocks_output_c1, threadsPerBlock_output_c1>>>((float (*)[24][24])l_c1.d_output, (float (*)[4][4])l_s1.weight, (float (*)[6][6])l_s1.d_preact);
-	
-	dim3 threadsPerBlock_bp_preact_c1(8, 8); // This can be tuned based on the device capabilities
+				
+bp_output_c1<<<numBlocks_output_c1, threadsPerBlock_output_c1>>>((float (*)[24][24])l_c1.d_output, (float (*)[4][4])l_s1.weight, (float (*)[6][6])l_s1.d_preact);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_output_c1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+
+dim3 threadsPerBlock_bp_preact_c1(8, 8); // This can be tuned based on the device capabilities
 dim3 numBlocks_bp_preact_c1(
     (24 + threadsPerBlock_bp_preact_c1.x - 1) / threadsPerBlock_bp_preact_c1.x,
     (24 + threadsPerBlock_bp_preact_c1.y - 1) / threadsPerBlock_bp_preact_c1.y,
     6
 );
-  bp_preact_c1<<<numBlocks_bp_preact_c1, threadsPerBlock_bp_preact_c1>>>((float (*)[24][24])l_c1.d_preact, (float (*)[24][24])l_c1.d_output, (float (*)[24][24])l_c1.preact);
-	dim3 threadsPerBlock_weight_c1(5, 5); // Assuming the kernel size is small enough to fit a block
+bp_preact_c1<<<numBlocks_bp_preact_c1, threadsPerBlock_bp_preact_c1>>>((float (*)[24][24])l_c1.d_preact, (float (*)[24][24])l_c1.d_output, (float (*)[24][24])l_c1.preact);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_preact_c1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+dim3 threadsPerBlock_weight_c1(5, 5); // Assuming the kernel size is small enough to fit a block
 dim3 numBlocks_weight_c1(1, 1, 6); 
-	bp_weight_c1<<<numBlocks_weight_c1, threadsPerBlock_weight_c1>>>((float (*)[5][5])l_c1.d_weight, (float (*)[24][24])l_c1.d_preact, (float (*)[28])l_input.output);
-	dim3 blocks_bias_c1(6); // One block per feature map
+bp_weight_c1<<<numBlocks_weight_c1, threadsPerBlock_weight_c1>>>((float (*)[5][5])l_c1.d_weight, (float (*)[24][24])l_c1.d_preact, (float (*)[28])l_input.output);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_weight_c1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+dim3 blocks_bias_c1(6); // One block per feature map
 dim3 threads_bias_c1(16, 16);
-	bp_bias_c1<<<blocks_bias_c1, threads_bias_c1>>>(l_c1.bias, (float (*)[24][24])l_c1.d_preact);
-	apply_grad<<<64, 64>>>(l_f.weight, l_f.d_weight, l_f.M * l_f.N);
-	apply_grad<<<64, 64>>>(l_s1.weight, l_s1.d_weight, l_s1.M * l_s1.N);
-	apply_grad<<<64, 64>>>(l_c1.weight, l_c1.d_weight, l_c1.M * l_c1.N);
-	end = clock();
-	return ((double) (end - start)) / CLOCKS_PER_SEC;
+bp_bias_c1<<<blocks_bias_c1, threads_bias_c1>>>(l_c1.bias, (float (*)[24][24])l_c1.d_preact);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (bp_bias_c1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+apply_grad<<<64, 64>>>(l_f.weight, l_f.d_weight, l_f.M * l_f.N);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (apply_grad l_f): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+apply_grad<<<64, 64>>>(l_s1.weight, l_s1.d_weight, l_s1.M * l_s1.N);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (apply_grad l_s1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+apply_grad<<<64, 64>>>(l_c1.weight, l_c1.d_weight, l_c1.M * l_c1.N);
+err = cudaGetLastError();
+if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel launch error (apply_grad l_c1): %s\n", cudaGetErrorString(err));
+    exit(1);
+}
+end = clock();
+return ((double) (end - start)) / CLOCKS_PER_SEC;
 
 }
 
 static void learn()
 {
-	static cublasHandle_t blas;
-	cublasCreate(&blas);
+    static cublasHandle_t blas;
+    cublasCreate(&blas);
 
-	float err;
-	int iter = 1;
-	
-	double time_taken = 0.0;
+    float err;
+    int max_iter = 1000; // Số lần lặp tối đa
+    int iter = 0;
+    
+    double time_taken = 0.0;
 
-	fprintf(stdout ,"Learning\n");
+    fprintf(stdout ,"Learning\n");
 
-	while (iter < 0 || iter-- > 0) {
-		err = 0.0f;
+    while (iter < max_iter) {
+        err = 0.0f;
 
-		for (int i = 0; i < train_cnt; ++i) {
-			float tmp_err;
+        for (int i = 0; i < train_cnt; ++i) {
+            float tmp_err;
 
-			time_taken += forward_pass(train_set[i].data);
+            time_taken += forward_pass(train_set[i].data);
 
-			l_f.bp_clear();
-			l_s1.bp_clear();
-			l_c1.bp_clear();
+            l_f.bp_clear();
+            l_s1.bp_clear();
+            l_c1.bp_clear();
 
-			// Euclid distance of train_set[i]
-			makeError<<<10, 1>>>(l_f.d_preact, l_f.output, train_set[i].label, 10);
-			cublasSnrm2(blas, 10, l_f.d_preact, 1, &tmp_err);
-			err += tmp_err;
+            // Euclid distance of train_set[i]
+            makeError<<<10, 1>>>(l_f.d_preact, l_f.output, train_set[i].label, 10);
+            cudaError_t tmp_cuda_err = cudaGetLastError();
+            if (tmp_cuda_err != cudaSuccess) {
+                fprintf(stderr, "CUDA kernel launch error (makeError): %s\n", cudaGetErrorString(tmp_cuda_err));
+                exit(1);
+            }
+            cublasSnrm2(blas, 10, l_f.d_preact, 1, &tmp_err);
+            err += tmp_err;
 
-			time_taken += back_pass();
-		}
+            time_taken += back_pass();
+        }
 
-		err /= train_cnt;
-		fprintf(stdout, "error: %e, time_on_gpu: %lf\n", err, time_taken);
+        err /= train_cnt;
+        fprintf(stdout, "iteration %d: error: %e, time_on_gpu: %lf\n", iter, err, time_taken);
 
-		if (err < threshold) {
-			fprintf(stdout, "Training complete, error less than threshold\n\n");
-			break;
-		}
-
-	}
-	
-	fprintf(stdout, "\n Time - %lf\n", time_taken);
+        if (err < threshold) {
+            fprintf(stdout, "Training complete, error less than threshold\n\n");
+            break;
+        }
+        
+        iter++;
+    }
+    
+    fprintf(stdout, "\n Time - %lf\n", time_taken);
 }
 
 
