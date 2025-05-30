@@ -293,7 +293,7 @@ CUDA_cudart_static_LIBRARY:FILEPATH=/usr/local/cuda-12.4/lib64/libcudart_static.
 CUDA_cufft_LIBRARY:FILEPATH=/usr/local/cuda-12.4/lib64/libcufft.so
 
 //"cupti" library
-CUDA_cupti_LIBRARY:FILEPATH=CUDA_cupti_LIBRARY-NOTFOUND
+CUDA_cupti_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libcupti.so
 
 //"curand" library
 CUDA_curand_LIBRARY:FILEPATH=/usr/local/cuda-12.4/lib64/libcurand.so
