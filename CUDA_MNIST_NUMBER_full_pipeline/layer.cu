@@ -116,14 +116,14 @@ __device__ float step_function(float v)
     return 1 / (1 + expf(-v));  // Using expf() for faster computation
 }
 
-__global__ void makeError(float *err, float *output, unsigned int Y, const int N)
-{float dt = 1.0E-01f;
-	const int pos = blockIdx.x * blockDim.x + threadIdx.x;
-	const int size = blockDim.x * gridDim.x;
+__global__ void makeError(float *err, float *output, unsigned int Y, const int N) {
+    const float dt = 1.0E-1f; // Sử dụng dt
+    const int pos = blockIdx.x * blockDim.x + threadIdx.x;
+    const int size = blockDim.x * gridDim.x;
 
-	for (int idx = N * pos / size; idx < N * (pos+1) / size; ++idx) {
-		err[idx] = ((Y == idx ? 1.0f : 0.0f) - output[idx]);
-	}
+    for (int idx = (pos * N) / size; idx < ((pos + 1) * N) / size; idx++) {
+        err[idx] = dt * (((Y == idx) ? 1.0f : 0.0f) - output[idx]);
+    }
 }
 
 /**

@@ -52,12 +52,12 @@ struct KernelConfig {
 static inline void loaddata()
 {
     // Load training set
-    int ret1 = mnist_load("../../data/train-images.idx3-ubyte",
-                         "../../data/train-labels.idx1-ubyte",
+    int ret1 = mnist_load("data/train-images.idx3-ubyte",
+                         ".data/train-labels.idx1-ubyte",
                          &train_set, &train_cnt);
     // Load test set
-    int ret2 = mnist_load("../../data/t10k-images.idx3-ubyte",
-                         "../../data/t10k-labels.idx1-ubyte",
+    int ret2 = mnist_load("data/t10k-images.idx3-ubyte",
+                         "data/t10k-labels.idx1-ubyte",
                          &test_set, &test_cnt);
     if (ret1 != 0) {
         printf("Error loading train set, error code: %d\n", ret1);
@@ -207,51 +207,78 @@ dim3 threads_bias_c1(16, 16);
 
 }
 
-static void learn()
-{
-	static cublasHandle_t blas;
-	cublasCreate(&blas);
+static void learn() {
+    static cublasHandle_t blas = nullptr;
+    if (blas == nullptr) {
+        cublasStatus_t status = cublasCreate(&blas);
+        if (status != CUBLAS_STATUS_SUCCESS) {
+            fprintf(stderr, "cuBLAS initialization failed: %d\n", status);
+            exit(1);
+        }
+    }
 
-	float err;
-	int iter = 1;
-	
-	double time_taken = 0.0;
+    float err;
+    int iter = 1; // Số lần lặp (có thể điều chỉnh)
+    double time_taken = 0.0;
 
-	fprintf(stdout ,"Learning\n");
+    fprintf(stdout, "Learning\n");
 
-	while (iter < 0 || iter-- > 0) {
-		err = 0.0f;
+    while (iter < 0 || iter-- > 0) {
+        err = 0.0f;
+        double iter_time = 0.0;
 
-		for (int i = 0; i < train_cnt; ++i) {
-			float tmp_err;
+        for (int i = 0; i < train_cnt; ++i) {
+            float tmp_err;
 
-			time_taken += forward_pass(train_set[i].data);
+            // Kiểm tra train_set[i].data
+            if (!train_set[i].data) {
+                fprintf(stderr, "Invalid train_set[%d].data\n", i);
+                cublasDestroy(blas);
+                exit(1);
+            }
 
-			l_f.bp_clear();
-			l_s1.bp_clear();
-			l_c1.bp_clear();
+            iter_time += forward_pass(train_set[i].data);
 
-			// Euclid distance of train_set[i]
-			makeError<<<10, 1>>>(l_f.d_preact, l_f.output, train_set[i].label, 10);
-			cublasSnrm2(blas, 10, l_f.d_preact, 1, &tmp_err);
-			err += tmp_err;
+            l_f.bp_clear();
+            l_s1.bp_clear();
+            l_c1.bp_clear();
 
-			time_taken += back_pass();
-		}
+            // Tính lỗi
+            makeError<<<1, 10>>>(l_f.d_preact, l_f.output, train_set[i].label, 10);
+            cudaDeviceSynchronize();
+            cudaError_t cuda_err = cudaGetLastError();
+            if (cuda_err != cudaSuccess) {
+                fprintf(stderr, "CUDA error in makeError: %s\n", cudaGetErrorString(cuda_err));
+                cublasDestroy(blas);
+                exit(1);
+            }
 
-		err /= train_cnt;
-		fprintf(stdout, "error: %e, time_on_gpu: %lf\n", err, time_taken);
+            cublasStatus_t status = cublasSnrm2(blas, 10, l_f.d_preact, 1, &tmp_err);
+            if (status != CUBLAS_STATUS_SUCCESS) {
+                fprintf(stderr, "cuBLAS Snrm2 failed: %d\n", status);
+                cublasDestroy(blas);
+                exit(1);
+            }
+            err += tmp_err;
 
-		if (err < threshold) {
-			fprintf(stdout, "Training complete, error less than threshold\n\n");
-			break;
-		}
+            iter_time += back_pass();
+        }
 
-	}
-	
-	fprintf(stdout, "\n Time - %lf\n", time_taken);
+        err /= train_cnt;
+        time_taken += iter_time;
+        fprintf(stdout, "Iteration %d, error: %e, time_on_gpu: %lf\n", iter + 1, err, iter_time);
+
+        if (err < threshold) {
+            fprintf(stdout, "Training complete, error less than threshold\n\n");
+            break;
+        }
+    }
+
+    fprintf(stdout, "\nTotal Time - %lf\n", time_taken);
+
+    // Không hủy blas ở đây để tái sử dụng nếu gọi lại learn()
+    // cublasDestroy(blas); // Nếu không gọi lại learn(), có thể hủy
 }
-
 
 // Returns label of given data (0-9)
 static unsigned int classify(double data[28][28])
