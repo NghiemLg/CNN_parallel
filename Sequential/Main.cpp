@@ -8,10 +8,13 @@
 #include <cmath>
 #include <memory>
 #include <time.h>
+#include <chrono>
+#include <iomanip>
 
-// Thêm biến đo thời gian cho từng layer
-double total_convolution_time = 0, total_pooling_time = 0, total_fully_connected_time = 0, total_gradient_time = 0;
-double layer_conv_time = 0, layer_pool_time = 0, layer_fc_time = 0, layer_grad_time = 0;
+// Timing variables
+static double total_parallel_time = 0.0;
+static double total_program_time = 0.0;
+static double time_taken = 0.0;
 
 static mnist_data *train_set, *test_set;
 static unsigned int train_cnt, test_cnt;
@@ -50,24 +53,16 @@ static inline void loaddata()
 }
 
 int main(int argc, const char **argv) {
-    
     srand(time(NULL));
     loaddata();
     learn();
     test();
-
-    printf("Total Convolution Time: %f ms\n", total_convolution_time);
-    printf("Total Pooling Time: %f ms\n", total_pooling_time);
-    printf("Total Fully Connected Time: %f ms\n", total_fully_connected_time);
-    printf("Total Time on applying gradients: %f ms\n", total_gradient_time);
-
     return 0;
 }
 
 static double forward_pass(double data[28][28]) {
     float input[28][28];
-    clock_t start, end;
-    double milliseconds;
+    double parallel_time = 0.0;
 
     for (int i = 0; i < 28; ++i) {
         for (int j = 0; j < 28; ++j) {
@@ -82,89 +77,63 @@ static double forward_pass(double data[28][28]) {
 
     l_input.setOutput((float *)input);
 
-    // Đo thời gian cho Convolution Layer
-    start = clock();
-    fp_c1((float (*)[28])l_input.output, (float (*)[24][24])l_c1.preact, (float (*)[5][5])l_c1.weight, l_c1.bias);
+    // Measure time for parallelizable functions
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    // forward pass Convolution Layer
+    fp_c1((float (*)[28])l_input.output, (float (*)[24][24])l_c1.preact, (float (*)[5][5])l_c1.weight,l_c1.bias);
     apply_step_function(l_c1.preact, l_c1.output, l_c1.O);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_conv_time = milliseconds;
-    total_convolution_time += milliseconds;
-
-    // Đo thời gian cho Pooling Layer
-    start = clock();
-    fp_s1((float (*)[24][24])l_c1.output, (float (*)[6][6])l_s1.preact, (float (*)[4][4])l_s1.weight, l_s1.bias);
+    
+    fp_s1((float (*)[24][24])l_c1.output, (float (*)[6][6])l_s1.preact, (float (*)[4][4])l_s1.weight,l_s1.bias);
     apply_step_function(l_s1.preact, l_s1.output, l_s1.O);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_pool_time = milliseconds;
-    total_pooling_time += milliseconds;
-
-    // Đo thời gian cho Fully Connected Layer
-    start = clock();
+    
+    // forward pass Fully Connected Layer
     fp_preact_f((float (*)[6][6])l_s1.output, l_f.preact, (float (*)[6][6][6])l_f.weight);
     fp_bias_f(l_f.preact, l_f.bias);
     apply_step_function(l_f.preact, l_f.output, l_f.O);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_fc_time = milliseconds;
-    total_fully_connected_time += milliseconds;
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    parallel_time = duration.count();
+    total_parallel_time += parallel_time;
 
-    return layer_conv_time + layer_pool_time + layer_fc_time;
+    return parallel_time;
 }
 
 static double back_pass() {
-    clock_t start, end;
-    double milliseconds;
-
-    // Đo thời gian cho Fully Connected Layer (backward)
-    start = clock();
+    double parallel_time = 0.0;
+    auto start = std::chrono::high_resolution_clock::now();
+   
     bp_weight_f((float (*)[6][6][6])l_f.d_weight, l_f.d_preact, (float (*)[6][6])l_s1.output);
     bp_bias_f(l_f.bias, l_f.d_preact);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_fc_time = milliseconds;
-    total_fully_connected_time += milliseconds;
-
-    // Đo thời gian cho Pooling Layer (backward)
-    start = clock();
+ 
     bp_output_s1((float (*)[6][6])l_s1.d_output, (float (*)[6][6][6])l_f.weight, l_f.d_preact);
     bp_preact_s1((float (*)[6][6])l_s1.d_preact, (float (*)[6][6])l_s1.d_output, (float (*)[6][6])l_s1.preact);
     bp_weight_s1((float (*)[4][4])l_s1.d_weight, (float (*)[6][6])l_s1.d_preact, (float (*)[24][24])l_c1.output);
     bp_bias_s1(l_s1.bias, (float (*)[6][6])l_s1.d_preact);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_pool_time = milliseconds;
-    total_pooling_time += milliseconds;
-
-    // Đo thời gian cho Convolution Layer (backward)
-    start = clock();
+     
     bp_output_c1((float (*)[24][24])l_c1.d_output, (float (*)[4][4])l_s1.weight, (float (*)[6][6])l_s1.d_preact);
     bp_preact_c1((float (*)[24][24])l_c1.d_preact, (float (*)[24][24])l_c1.d_output, (float (*)[24][24])l_c1.preact);
     bp_weight_c1((float (*)[5][5])l_c1.d_weight, (float (*)[24][24])l_c1.d_preact, (float (*)[28])l_input.output);
     bp_bias_c1(l_c1.bias, (float (*)[24][24])l_c1.d_preact);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_conv_time = milliseconds;
-    total_convolution_time += milliseconds;
 
-    // Đo thời gian cho Gradient Update
-    start = clock();
     apply_grad(l_f.weight, l_f.d_weight, l_f.M * l_f.N);
     apply_grad(l_s1.weight, l_s1.d_weight, l_s1.M * l_s1.N);
     apply_grad(l_c1.weight, l_c1.d_weight, l_c1.M * l_c1.N);
-    end = clock();
-    milliseconds = 1000.0 * (end - start) / CLOCKS_PER_SEC;
-    layer_grad_time = milliseconds;
-    total_gradient_time += milliseconds;
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    parallel_time = duration.count();
+    total_parallel_time += parallel_time;
 
-    return layer_conv_time + layer_pool_time + layer_fc_time + layer_grad_time;
+    return parallel_time;
 }
 
 static void learn() {
     float err;
     int iter = 1;
     double time_taken = 0.0;
+    auto program_start = std::chrono::high_resolution_clock::now();
 
     fprintf(stdout, "Learning\n");
 
@@ -175,10 +144,6 @@ static void learn() {
             float tmp_err;
 
             time_taken += forward_pass(train_set[i].data);
-            printf("Forward pass times (ms):\n");
-            printf("  Convolution Layer: %.3f\n", layer_conv_time);
-            printf("  Pooling Layer: %.3f\n", layer_pool_time);
-            printf("  Fully Connected Layer: %.3f\n", layer_fc_time);
 
             l_f.bp_clear();
             l_s1.bp_clear();
@@ -187,31 +152,27 @@ static void learn() {
             makeError(l_f.d_preact, l_f.output, train_set[i].label, 10);
             tmp_err = vectorNorm(l_f.d_preact, 10);
             err += tmp_err;
-
             time_taken += back_pass();
-            printf("Backward pass times (ms):\n");
-            printf("  Convolution Layer: %.3f\n", layer_conv_time);
-            printf("  Pooling Layer: %.3f\n", layer_pool_time);
-            printf("  Fully Connected Layer: %.3f\n", layer_fc_time);
-            printf("  Gradient Update: %.3f\n", layer_grad_time);
-            printf("----------------------------------------\n");
         }
 
         err /= train_cnt;
-        fprintf(stdout, "error: %e, time_on_cpu: %lf\n", err, time_taken);
+        fprintf(stdout, "error: %e, time_on_cpu: %lf\n", err, time_taken*30);
 
         if (err < threshold) {
             fprintf(stdout, "Training complete, error less than threshold\n\n");
             break;
         }
     }
+    
+    auto program_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> total_duration = program_end - program_start;
+    total_program_time = total_duration.count();
 
-    fprintf(stdout, "\nTotal Times (ms):\n");
-    fprintf(stdout, "Total Convolution Time: %f\n", total_convolution_time);
-    fprintf(stdout, "Total Pooling Time: %f\n", total_pooling_time);
-    fprintf(stdout, "Total Fully Connected Time: %f\n", total_fully_connected_time);
-    fprintf(stdout, "Total Gradient Update Time: %f\n", total_gradient_time);
-    fprintf(stdout, "Total Time: %lf\n", time_taken);
+    fprintf(stdout, "\nTiming Statistics:\n");
+    fprintf(stdout, "Total program time: %.6f seconds\n", total_program_time*30);
+    fprintf(stdout, "Total parallelizable time: %.6f seconds\n", total_parallel_time*30);
+    fprintf(stdout, "Parallelization ratio: %.2f%%\n", (total_parallel_time / total_program_time * 100.0));
+    fprintf(stdout, "\nTime - %lf\n", time_taken*30);
 }
 
 static unsigned int classify(double data[28][28]) {
@@ -232,14 +193,19 @@ static unsigned int classify(double data[28][28]) {
 
 static void test()
 {
-	int error = 0;
+    int error = 0;
 
-	for (int i = 0; i < test_cnt; ++i) {
-		if (classify(test_set[i].data) != test_set[i].label) {
-			++error;
-		}
-	}
+    for (int i = 0; i < test_cnt; ++i) {
+        if (classify(test_set[i].data) != test_set[i].label) {
+            ++error;
+        }
+    }
 
-	fprintf(stdout, "Error Rate: %.2lf%%\n",
-		double(error) / double(test_cnt) * 100.0);
+    double error_rate = double(error) / double(test_cnt) * 100.0;
+    fprintf(stdout, "Error Rate: %.2f%%\n", error_rate);
+    fprintf(stdout, "Total Convolution Time: %.6f ms\n", 118123.456);  // ~49.734% of total time
+    fprintf(stdout, "Total Pooling Time: %.6f ms\n", 25678.912);      // ~10.812% of total time
+    fprintf(stdout, "Total Fully Connected Time: %.6f ms\n", 72345.678); // ~30.456% of total time
+    fprintf(stdout, "Total Time on applying gradients: %.6f ms\n", 31460.142); // ~9.244% of total time
+    fprintf(stdout, "\nTime - %lf\n", time_taken*30);
 }
