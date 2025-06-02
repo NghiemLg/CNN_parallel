@@ -1,7 +1,7 @@
 CMakeFiles/cnn_omp.dir/Main.cpp.o: \
- /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/Main.cpp \
+ /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/Main.cpp \
  /usr/include/stdc-predef.h \
- /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/mnist.h \
+ /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/mnist.h \
  /usr/include/stdio.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \
@@ -59,7 +59,7 @@ CMakeFiles/cnn_omp.dir/Main.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
  /usr/include/c++/12/bits/std_abs.h /usr/include/string.h \
  /usr/include/strings.h \
- /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/layer.h \
+ /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/layer.h \
  /usr/include/c++/12/vector /usr/include/c++/12/bits/stl_algobase.h \
  /usr/include/c++/12/bits/functexcept.h \
  /usr/include/c++/12/bits/exception_defines.h \

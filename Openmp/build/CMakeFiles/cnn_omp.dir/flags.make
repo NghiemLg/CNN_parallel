@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp
+CXX_INCLUDES = -I/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp -I/home/nlg/anaconda3/envs/python10/include/opencv4
 
 CXX_FLAGS = -fopenmp -std=gnu++11
 

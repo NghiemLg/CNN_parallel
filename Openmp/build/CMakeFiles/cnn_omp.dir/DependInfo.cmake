@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/Main.cpp" "CMakeFiles/cnn_omp.dir/Main.cpp.o" "gcc" "CMakeFiles/cnn_omp.dir/Main.cpp.o.d"
+  "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/Main.cpp" "CMakeFiles/cnn_omp.dir/Main.cpp.o" "gcc" "CMakeFiles/cnn_omp.dir/Main.cpp.o.d"
   )
 
 # Targets to which this target links.

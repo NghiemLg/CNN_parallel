@@ -1,4 +1,4 @@
-# Install script for directory: /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp
+# Install script for directory: /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

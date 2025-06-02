@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp
+CMAKE_SOURCE_DIR = /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build
+CMAKE_BINARY_DIR = /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/CMakeFiles /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/build/CMakeFiles /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CODE/clone_github/Parallel-CNN/Openmp/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /media/nlg/CE9DB670E677A5C9/2024.2/LTSS/CNN_CUDA/Openmp/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -129,19 +129,6 @@ cnn_omp/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cnn_omp.dir/build.make CMakeFiles/cnn_omp.dir/build
 .PHONY : cnn_omp/fast
 
-#=============================================================================
-# Target rules for targets named test_real
-
-# Build rule for target.
-test_real: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_real
-.PHONY : test_real
-
-# fast build rule for target.
-test_real/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_real.dir/build.make CMakeFiles/test_real.dir/build
-.PHONY : test_real/fast
-
 Main.o: Main.cpp.o
 .PHONY : Main.o
 
@@ -166,30 +153,6 @@ Main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cnn_omp.dir/build.make CMakeFiles/cnn_omp.dir/Main.cpp.s
 .PHONY : Main.cpp.s
 
-test_real.o: test_real.cpp.o
-.PHONY : test_real.o
-
-# target to build an object file
-test_real.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_real.dir/build.make CMakeFiles/test_real.dir/test_real.cpp.o
-.PHONY : test_real.cpp.o
-
-test_real.i: test_real.cpp.i
-.PHONY : test_real.i
-
-# target to preprocess a source file
-test_real.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_real.dir/build.make CMakeFiles/test_real.dir/test_real.cpp.i
-.PHONY : test_real.cpp.i
-
-test_real.s: test_real.cpp.s
-.PHONY : test_real.s
-
-# target to generate assembly for a file
-test_real.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_real.dir/build.make CMakeFiles/test_real.dir/test_real.cpp.s
-.PHONY : test_real.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -199,13 +162,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... cnn_omp"
-	@echo "... test_real"
 	@echo "... Main.o"
 	@echo "... Main.i"
 	@echo "... Main.s"
-	@echo "... test_real.o"
-	@echo "... test_real.i"
-	@echo "... test_real.s"
 .PHONY : help
 
 

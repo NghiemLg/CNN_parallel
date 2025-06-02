@@ -269,6 +269,7 @@ void bp_output_s1(float d_output[6][6][6], const float n_weight[10][6][6][6], co
 
 void bp_preact_s1(float d_preact[6][6][6], const float d_output[6][6][6], const float preact[6][6][6]) {
     // Iterate through each element to calculate gradient of preactivation
+    #pragma omp parallel for collapse(3)
     for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 6; ++j) {
             for (int k = 0; k < 6; ++k) {
@@ -281,7 +282,7 @@ void bp_preact_s1(float d_preact[6][6][6], const float d_output[6][6][6], const 
 
 void bp_weight_s1(float d_weight[1][4][4], const float d_preact[6][6][6], const float p_output[6][24][24]) {
     // Initialize d_weight to zero before accumulation
-    
+    #pragma omp parallel for collapse(2)
     for (int i = 0; i < 1; ++i) {
         for (int j = 0; j < 4; ++j) {
             for (int k = 0; k < 4; ++k) {
@@ -291,19 +292,19 @@ void bp_weight_s1(float d_weight[1][4][4], const float d_preact[6][6][6], const 
     }
 
     // Compute the gradient for each weight
-    
+    #pragma omp parallel for collapse(3)
     for (int i1 = 0; i1 < 1; ++i1) { // single weight map
         for (int i2 = 0; i2 < 4; ++i2) { // kernel width
             for (int i3 = 0; i3 < 4; ++i3) { // kernel height
+                float sum = 0.0f;
                 for (int i4 = 0; i4 < 6; ++i4) { // over each output feature map dimension
                     for (int i5 = 0; i5 < 6; ++i5) { // first dimension of output
                         for (int i6 = 0; i6 < 6; ++i6) { // second dimension of output
-                            // Calculate the corresponding output location and accumulate the gradient
-                            
-                            d_weight[i1][i2][i3] += d_preact[i4][i5][i6] * p_output[i4][i5 * 4 + i2][i6 * 4 + i3];
+                            sum += d_preact[i4][i5][i6] * p_output[i4][i5 * 4 + i2][i6 * 4 + i3];
                         }
                     }
                 }
+                d_weight[i1][i2][i3] = sum;
             }
         }
     }
@@ -357,24 +358,13 @@ void bp_output_c1(float d_output[6][24][24], const float n_weight[1][4][4], cons
 }
 
 void bp_preact_c1(float d_preact[6][24][24], const float d_output[6][24][24], const float preact[6][24][24]) {
-    // Assume step_function is a sigmoid activation function
-    auto sigmoid = [](float x) {
-        return 1.0f / (1.0f + exp(-x));
-    };
-
-    // Assume the derivative of the sigmoid function
-    auto sigmoid_derivative = [](float x) {
-        float s = 1.0f / (1.0f + exp(-x));
-        return s * (1 - s);
-    };
-
     // Compute the gradient of pre-activation for each element
     #pragma omp parallel for collapse(3)
     for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 24; ++j) {
             for (int k = 0; k < 24; ++k) {
-                float o = sigmoid(preact[i][j][k]);
-                d_preact[i][j][k] = d_output[i][j][k] * sigmoid_derivative(preact[i][j][k]);
+                float o = step_function(preact[i][j][k]);
+                d_preact[i][j][k] = d_output[i][j][k] * o * (1 - o);
             }
         }
     }
@@ -382,7 +372,7 @@ void bp_preact_c1(float d_preact[6][24][24], const float d_output[6][24][24], co
 
 void bp_weight_c1(float d_weight[6][5][5], const float d_preact[6][24][24], const float p_output[28][28]) {
     // Initialize d_weight to zero before accumulation
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for collapse(3)
     for (int i = 0; i < 6; ++i) {
         for (int j = 0; j < 5; ++j) {
             for (int k = 0; k < 5; ++k) {
@@ -394,15 +384,17 @@ void bp_weight_c1(float d_weight[6][5][5], const float d_preact[6][24][24], cons
     float d = 24.0f * 24.0f; // Normalization factor
 
     // Compute the gradient for each weight
-    #pragma omp parallel for collapse(4)
+    #pragma omp parallel for collapse(3)
     for (int i1 = 0; i1 < 6; ++i1) {
         for (int i2 = 0; i2 < 5; ++i2) {
             for (int i3 = 0; i3 < 5; ++i3) {
+                float sum = 0.0f;
                 for (int i4 = 0; i4 < 24; ++i4) {
                     for (int i5 = 0; i5 < 24; ++i5) {
-                        d_weight[i1][i2][i3] += d_preact[i1][i4][i5] * p_output[i4 + i2][i5 + i3] / d;
+                        sum += d_preact[i1][i4][i5] * p_output[i4 + i2][i5 + i3];
                     }
                 }
+                d_weight[i1][i2][i3] = sum / d;
             }
         }
     }
